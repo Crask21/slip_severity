@@ -18,11 +18,11 @@ def import_csv(file_path):
     return time, data
 
 finger_LUT = {
-        "th": 0,
-        "ff": 1,
-        "mf": 2,
-        "rf": 3,
-        "lf": 4
+        "ff": 0,
+        "mf": 1,
+        "rf": 2,
+        "lf": 3,
+        "th": 4
     }
 
 class SequenceDataset(Dataset):
@@ -55,9 +55,11 @@ class SequenceDataset(Dataset):
 
 
 class SequenceDataloader(DataLoader):
-    def __init__(self, data_path, fingers=["th", "ff", "mf", "rf", "lf"], batch_size=32, shuffle=True):
+    def __init__(self, data_path, fingers=["ff", "mf", "rf", "lf", "th"], batch_size=32, shuffle=True, min_seq_len=20, max_seq_len=50):
         self.dataset = SequenceDataset(data_path)
         self.fingers = [finger_LUT[ finger ] for finger in fingers]
+        self.min_seq_len = min_seq_len
+        self.max_seq_len = max_seq_len
 
         def collate_fn(batch):
             '''
@@ -68,7 +70,7 @@ class SequenceDataloader(DataLoader):
             batch_sensors = []
             batch_targets = []
 
-            seq_len = random.randint(20, 50)
+            seq_len = random.randint(self.min_seq_len, self.max_seq_len)
             smallest_seq_len = min(sensor.shape[0] for sensor in sensors)
             seq_len = min(seq_len, smallest_seq_len)
             for sensor, target in zip(sensors, targets):
@@ -88,7 +90,7 @@ class SequenceDataloader(DataLoader):
 
 
 if __name__ == "__main__":
-    dataloader = SequenceDataloader("G:\\datasets\\tac2Slip\\severity\\salt", fingers=["th", "ff", "mf", "rf"], batch_size=4)
+    dataloader = SequenceDataloader("G:\\datasets\\tac2Slip\\severity\\salt", fingers=["ff", "mf", "rf", "lf", "th"], batch_size=4)
     for sensors, target in dataloader:
         print(sensors.shape)  # (B,T,5,51)
         print(target.shape)   # (B,T,5,7)

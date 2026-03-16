@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 class LSTMModel(nn.Module):
 
-    def __init__(self, input_dim=51, hidden_dim=128, layers=2):
+    def __init__(self, input_dim=51, hidden_dim=128, layers=2, output_dim=7):
         super().__init__()
 
         self.lstm = nn.LSTM(
@@ -14,7 +14,7 @@ class LSTMModel(nn.Module):
             batch_first=True
         )
 
-        self.fc = nn.Linear(hidden_dim, 7)
+        self.fc = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
 
@@ -26,9 +26,13 @@ class LSTMModel(nn.Module):
 
         pose = self.fc(out)
 
-        trans = pose[:, :3]
-        quat = pose[:, 3:]
+        if pose.shape[-1] == 7:
 
-        quat = F.normalize(quat, dim=-1)
+            trans = pose[:, :3]
+            quat = pose[:, 3:]
 
-        return torch.cat([trans, quat], dim=-1)
+            quat = F.normalize(quat, dim=-1)
+
+            return torch.cat([trans, quat], dim=-1)
+        else:
+            return pose
