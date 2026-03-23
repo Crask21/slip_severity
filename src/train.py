@@ -94,8 +94,15 @@ def train(model, dataloader, optimizer, epochs=1000):
     losses = []
     for epoch in range(epochs):
         for sensors, target in tqdm(dataloader, desc=f"Epoch {epoch + 1}/{epochs}"):
-            sensors = sensors.cuda()   # (B,T,num_fingers, 51)
-            target = target.cuda()     # (B,T,num_fingers, 7)
+
+            # print(f"Min and max sensor values: {sensors.min().item()}, {sensors.max().item()}")
+            if torch.cuda.is_available():
+                sensors = sensors.cuda()   # (B,T,num_fingers, 51)
+                target = target.cuda()     # (B,T,num_fingers, 7)
+
+            # Scaling
+            sensors = sensors/1024
+
 
             if model.fc.out_features == 3: # only train on translation
                 target = target[:, :, :, :3]  # (B,T,num_fingers, 3)
@@ -106,7 +113,7 @@ def train(model, dataloader, optimizer, epochs=1000):
 
             pred = model(sensors)
             # if epoch > 500:
-            #     print(pred[0], target[0, -1])  # print the first sample in the batch and the last target pose
+            # print(pred[0], target[0, -1])  # print the first sample in the batch and the last target pose
 
             if pred.shape[-1] == 7:
                 loss = pose_loss(pred, target)
@@ -129,7 +136,7 @@ def train(model, dataloader, optimizer, epochs=1000):
     plt.show()
 
     # Save the model
-    save_path = "lstm_model.pth"
+    save_path = "lstm_model_scaled.pth"
     torch.save(model.state_dict(), "lstm_model.pth")
 
 def evaluate(model, dataloader):
@@ -178,17 +185,17 @@ def plot_predictions(model, dataloader):
 
 if __name__ == "__main__":
 
-    model = LSTMModel(output_dim=3).cuda()
+    model = LSTMModel(output_dim=3).cuda() if torch.cuda.is_available() else LSTMModel(output_dim=3)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     epochs = 1000
 
-    dataloader = SequenceDataloader("G:\\datasets\\tac2Slip\\severity-03-15\\salt", fingers = ["ff"], batch_size=32, min_seq_len=20, max_seq_len=100)
+    dataloader = SequenceDataloader("D:\\datasets\\tac2Slip\\severity-03-15\\salt", fingers = ["ff"], batch_size=32, min_seq_len=20, max_seq_len=100)
 
     # Get one batch of data
     sensors, target = next(iter(dataloader))
 
-    # plot_sensor_target_pair(sensors, target, sensor_idx=0, target_idx=0)
+    plot_sensor_target_pair(sensors, target, sensor_idx=0, target_idx=0)
 
     train(model, dataloader, optimizer, epochs=epochs)
     evaluate(model, dataloader)
