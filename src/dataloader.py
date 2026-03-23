@@ -26,26 +26,30 @@ finger_LUT = {
     }
 
 class SequenceDataset(Dataset):
-    def __init__(self, path):
-        
+    def __init__(self, path, classes:list[str] = [""]):
+        self.classes = classes
         
         self.sensor = []  # List of (sensors, target) 
         self.target = []  # List of (sensors, target)
-        for file_path in os.listdir(path):
-            if file_path.endswith('.csv'):
-                time, data = import_csv(os.path.join(path, file_path))
-                sensor_data = data[:, :255]  # First 5*51 columns are sensor data
-                pose_data = data[:, 255:]    # Last 5*7 columns are pose data
+        for class_name in classes:
+            class_path = os.path.join(path, class_name)
+            if os.path.isdir(class_path):
+                print(f"Loading class {class_name} from {class_path}")
+                for file_path in os.listdir(class_path):
+                    if file_path.endswith('.csv'):
+                        time, data = import_csv(os.path.join(class_path, file_path))
+                        sensor_data = data[:, :255]  # First 5*51 columns are sensor data
+                        pose_data = data[:, 255:]    # Last 5*7 columns are pose data
 
-                velocity_data = np.diff(pose_data, axis=0) / np.diff(time[:, None], axis=0)
-                sensor_data = sensor_data[1:]  # Remove the first row to match velocities
+                        velocity_data = np.diff(pose_data, axis=0) / np.diff(time[:, None], axis=0)
+                        sensor_data = sensor_data[1:]  # Remove the first row to match velocities
 
-                # squeeze to (T, 5, 51) and (T, 5, 7)
-                sensor_data = sensor_data.reshape(-1, 5, 51)
-                velocity_data = velocity_data.reshape(-1, 5, 7)
-                
-                self.sensor.append(sensor_data)
-                self.target.append(velocity_data)
+                        # squeeze to (T, 5, 51) and (T, 5, 7)
+                        sensor_data = sensor_data.reshape(-1, 5, 51)
+                        velocity_data = velocity_data.reshape(-1, 5, 7)
+                        
+                        self.sensor.append(sensor_data)
+                        self.target.append(velocity_data)
 
     def __len__(self):
         return len(self.sensor)
@@ -55,8 +59,8 @@ class SequenceDataset(Dataset):
 
 
 class SequenceDataloader(DataLoader):
-    def __init__(self, data_path, fingers=["ff", "mf", "rf", "lf", "th"], batch_size=32, shuffle=True, min_seq_len=20, max_seq_len=50):
-        self.dataset = SequenceDataset(data_path)
+    def __init__(self, data_path,classes:list[str] = [""], fingers=["ff", "mf", "rf", "lf", "th"], batch_size=32, shuffle=True, min_seq_len=20, max_seq_len=50):
+        self.dataset = SequenceDataset(data_path, classes=classes)
         self.fingers = [finger_LUT[ finger ] for finger in fingers]
         self.min_seq_len = min_seq_len
         self.max_seq_len = max_seq_len
@@ -90,7 +94,8 @@ class SequenceDataloader(DataLoader):
 
 
 if __name__ == "__main__":
-    dataloader = SequenceDataloader("G:\\datasets\\tac2Slip\\severity\\salt", fingers=["ff", "mf", "rf", "lf", "th"], batch_size=4)
+    classes = ["book", "book_bottom_finger_contact", "chopping-board", "linear_book", "linear_book_bottom_finger_contact", "salt", "wood"]
+    dataloader = SequenceDataloader("G:\\datasets\\tac2Slip\\severity-03-15", classes=classes, fingers=["ff", "mf", "rf", "lf", "th"], batch_size=4)
     for sensors, target in dataloader:
         print(sensors.shape)  # (B,T,5,51)
         print(target.shape)   # (B,T,5,7)

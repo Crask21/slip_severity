@@ -182,9 +182,9 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     epochs = 1000
-
-    dataloader = SequenceDataloader("G:\\datasets\\tac2Slip\\severity-03-15\\salt", fingers = ["ff"], batch_size=32, min_seq_len=20, max_seq_len=100)
-
+    classes = ["book", "book_bottom_finger_contact", "chopping-board", "linear_book", "linear_book_bottom_finger_contact", "salt", "wood"]
+    
+    dataloader = SequenceDataloader("G:\\datasets\\tac2Slip\\severity-03-15", classes=classes, fingers = ["ff"], batch_size=32, min_seq_len=20, max_seq_len=100)
     # Get one batch of data
     sensors, target = next(iter(dataloader))
 
